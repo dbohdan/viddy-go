@@ -83,6 +83,12 @@ type Viddy struct {
 
 type ViddyIntervalMode string
 
+const (
+	borderColor     tcell.Color = tcell.Color59
+	titleColor      tcell.Color = tcell.Color59
+	brightTextColor tcell.Color = tcell.ColorWhite
+)
+
 var (
 	// ViddyIntervalModeClockwork is mode to run command in precise intervals forcibly.
 	ViddyIntervalModeClockwork ViddyIntervalMode = "clockwork"
@@ -99,6 +105,10 @@ var (
 
 func NewViddy(conf *config) *Viddy {
 	begin := time.Now().UnixNano()
+
+	tview.Styles.BorderColor = borderColor
+	tview.Styles.SecondaryTextColor = titleColor
+	tview.Styles.TitleColor = titleColor
 
 	newSnap := func(id int64, before *Snapshot, finish chan<- struct{}) *Snapshot {
 		return NewSnapshot(
@@ -389,18 +399,22 @@ func (v *Viddy) renderSnapshot(id int64) error {
 }
 
 func (v *Viddy) UpdateStatusView() {
-	v.statusView.SetText(fmt.Sprintf("Suspend %s  Diff %s  Bell %s",
-		convertToOnOrOff(v.isSuspend),
-		convertToOnOrOff(v.isShowDiff),
-		convertToOnOrOff(v.isRingBell)))
+	v.statusView.SetText(fmt.Sprintf("%s %s %s %s",
+		convertToOnOrOff(!v.unfold, "[F]old"),
+		convertToOnOrOff(v.isShowDiff, "[D]iff"),
+		convertToOnOrOff(v.isSuspend, "[S]uspend"),
+		convertToOnOrOff(v.isRingBell, "[B]ell"),
+	))
 }
 
-func convertToOnOrOff(on bool) string {
+func convertToOnOrOff(on bool, label string) string {
+	label = tview.Escape(label)
+
 	if on {
-		return "[green]◯[reset]"
+		return fmt.Sprintf("[%s::b]%s[reset]", brightTextColor.CSS(), label)
 	}
 
-	return "[red]◯[reset]"
+	return fmt.Sprintf("[%s]%s[reset]", tview.Styles.SecondaryTextColor.CSS(), label)
 }
 
 func (v *Viddy) arrange() {
@@ -443,7 +457,7 @@ func (v *Viddy) arrange() {
 		bottom.AddItem(tview.NewBox(), 0, 1, false)
 	}
 
-	bottom.AddItem(v.statusView, 25, 1, false)
+	bottom.AddItem(v.statusView, 30, 1, false)
 
 	flex.AddItem(bottom, 1, 1, false)
 
@@ -628,7 +642,7 @@ func (v *Viddy) Run() error {
 			v.SetIsShowDiff(!v.isShowDiff)
 		case 't':
 			v.SetIsNoTitle(!v.isNoTitle)
-		case 'u':
+		case 'f':
 			b.SetWrap(v.unfold)
 			v.unfold = !v.unfold
 		case 'x':
@@ -725,12 +739,12 @@ var helpTemplate = `Press ESC or q to go back
    [::u]General[-:-:-]
 
    Toggle time machine mode  : [yellow]SPACE[-:-:-]
+   Toggle fold               : [yellow]f[-:-:-]
+   Toggle diff               : [yellow]d[-:-:-]
    Toggle suspend execution  : [yellow]s[-:-:-]
    Toggle ring terminal bell : [yellow]b[-:-:-]
-   Toggle diff               : [yellow]d[-:-:-]
    Toggle header display     : [yellow]t[-:-:-]
    Toggle help view          : [yellow]?[-:-:-]
-   Toggle unfold             : [yellow]u[-:-:-]
    Quit Viddy                : [yellow]Q[-:-:-]
 
    [::u]Pager[-:-:-]
