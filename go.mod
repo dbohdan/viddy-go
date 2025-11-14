@@ -1,4 +1,4 @@
-module github.com/sachaos/viddy
+module dbohdan.com/viddy-go
 
 go 1.24.0
 
