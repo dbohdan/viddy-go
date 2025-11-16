@@ -21,3 +21,7 @@ fmt: ## format go files
 PHONY: lint
 lint: ## lint go files
 	golangci-lint run -c .golang-ci.yml
+
+PHONY: release
+release: ## build, checksum, and sign release binaries
+	VERSION="$$(./viddy-go --version | awk '{ print $$2 }')" go run script/release.go
