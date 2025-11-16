@@ -6,30 +6,15 @@ import (
 	"path/filepath"
 
 	"github.com/adrg/xdg"
-	"github.com/fatih/color"
 	"github.com/mattn/go-runewidth"
 	"github.com/rivo/tview"
 	"github.com/spf13/viper"
-	"github.com/tcnksm/go-latest"
 )
 
-var version string
-
-var githubTag = &latest.GithubTag{
-	Owner:             "sachaos",
-	Repository:        "viddy",
-	FixVersionStrFunc: latest.DeleteFrontV(),
-}
+var version = "0.5.0"
 
 func printVersion() {
-	fmt.Printf("viddy version: %s\n", version)
-
-	res, err := latest.Check(githubTag, version)
-	if err == nil && res.Outdated {
-		text := color.YellowString(fmt.Sprintf("%s is not latest, you should upgrade to v%s", version, res.Current))
-		fmt.Fprintln(os.Stderr, text)
-	}
-
+	fmt.Printf("viddy-go %s\n", version)
 	os.Exit(0)
 }
 

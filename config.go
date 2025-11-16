@@ -91,7 +91,7 @@ func newConfig(v *viper.Viper, args []string) (*config, error) {
 	flagSet.BoolP("precise", "p", false, "attempt run command in precise intervals")
 	flagSet.BoolP("clockwork", "c", false, "run command in precise intervals forcibly")
 	flagSet.BoolP("help", "h", false, "display this help and exit")
-	flagSet.BoolP("version", "v", false, "output version information and exit")
+	flagSet.BoolP("version", "V", false, "output version information and exit")
 
 	// general
 	flagSet.BoolP("bell", "b", false, "ring terminal bell changes between updates")

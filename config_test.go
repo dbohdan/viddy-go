@@ -94,7 +94,7 @@ func Test_newConfig(t *testing.T) {
 		{
 			name:       "version",
 			configFile: "",
-			args:       []string{"-v"},
+			args:       []string{"-V"},
 			want: func() config {
 				c := defaultConfig
 				c.runtime.version = true
