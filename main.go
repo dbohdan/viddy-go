@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/adrg/xdg"
 	"github.com/fatih/color"
@@ -36,9 +37,11 @@ func main() {
 	runewidth.DefaultCondition.EastAsianWidth = false
 
 	v := viper.New()
+	configPath := filepath.Join(xdg.ConfigHome, "viddy-go")
+
 	v.SetConfigType("toml")
-	v.SetConfigName("viddy")
-	v.AddConfigPath(xdg.ConfigHome)
+	v.SetConfigName("config")
+	v.AddConfigPath(configPath)
 
 	_ = v.ReadInConfig()
 
