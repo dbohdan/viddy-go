@@ -341,6 +341,7 @@ func ParseKeyStroke(key string) (KeyStroke, error) {
 		key = strings.TrimPrefix(key, "Alt-")
 	}
 
+	//nolint:modernize
 	if strings.HasPrefix(key, "Shift-") {
 		key = strings.TrimPrefix(key, "Shift-")
 

@@ -113,6 +113,7 @@ func (s *Snapshot) prepareCommand(commands []string) *exec.Cmd {
 	}
 
 	var args []string
+
 	args = append(args, strings.Fields(s.shellOpts)...)
 	args = append(args, "-c")
 	args = append(args, strings.Join(commands, " "))

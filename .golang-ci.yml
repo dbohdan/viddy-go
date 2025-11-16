@@ -1,23 +1,42 @@
-linters-settings:
-  lll:
-    line-length: 130
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
     - depguard
     - exhaustive
     - exhaustruct
     - forbidigo
     - forcetypeassert
+    - funcorder
     - gochecknoglobals
     - gomoddirectives
     - mnd
     - nilnil
+    - noctx
+    - noinlineerr
     - paralleltest
     - predeclared
     - rowserrcheck
-    - tenv
     - testpackage
     - varnamelen
     - wastedassign
     - wrapcheck
+    - wsl
+  settings:
+    lll:
+      line-length: 130
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax

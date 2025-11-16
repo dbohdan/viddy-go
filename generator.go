@@ -26,6 +26,7 @@ func ClockSnapshot(begin int64, newSnap newSnapFunc, interval time.Duration) (<-
 
 			finish := make(chan struct{})
 			id := (now.UnixNano() - begin) / int64(time.Millisecond)
+
 			s = newSnap(id, s, finish)
 			c <- s
 		}
@@ -103,6 +104,7 @@ func SequentialSnapshot(newSnap newSnapFunc, interval time.Duration) (<-chan *Sn
 
 			finish := make(chan struct{})
 			id := (time.Now().UnixNano() - begin) / int64(time.Millisecond)
+
 			s = newSnap(id, s, finish)
 			c <- s
 

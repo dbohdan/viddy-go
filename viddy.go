@@ -182,7 +182,7 @@ func (v *Viddy) SetIsTimeMachine(b bool) {
 	v.arrange()
 }
 
-func (v *Viddy) println(a ...interface{}) {
+func (v *Viddy) println(a ...any) {
 	_, _ = fmt.Fprintln(v.logView, a...)
 }
 
@@ -193,6 +193,7 @@ func (v *Viddy) addSnapshot(s *Snapshot) {
 func (v *Viddy) startRunner() {
 	for s := range v.snapshotQueue {
 		v.addSnapshot(s)
+
 		v.queue <- s.id
 
 		_ = s.run(v.finishedQueue, v.getBodyWidth(), v.pty)
@@ -234,6 +235,7 @@ func (v *Viddy) diffQueueHandler() {
 			err := s.compareFromBefore()
 			if err != nil {
 				time.Sleep(1 * time.Second)
+
 				v.diffQueue <- id
 
 				return
@@ -487,6 +489,7 @@ func (v *Viddy) Run() error {
 	h.SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorGray))
 
 	var cmd []string
+
 	cmd = append(cmd, v.cmd)
 	cmd = append(cmd, v.args...)
 

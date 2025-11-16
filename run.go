@@ -12,6 +12,7 @@ import (
 
 func (s *Snapshot) run(finishedQueue chan<- int64, width int, isPty bool) error {
 	s.start = time.Now()
+
 	defer func() {
 		s.end = time.Now()
 	}()
@@ -55,7 +56,9 @@ func (s *Snapshot) run(finishedQueue chan<- int64, width int, isPty bool) error 
 		s.errorResult = eb.Bytes()
 		s.exitCode = command.ProcessState.ExitCode()
 		s.completed = true
+
 		finishedQueue <- s.id
+
 		close(s.finish)
 	}()
 
