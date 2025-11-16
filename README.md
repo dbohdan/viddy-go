@@ -1,136 +1,83 @@
-# Viddy
+# viddy-go
 
 <p align="center">
 <img src="images/logo.png" width="200" alt="viddy" title="viddy" />
 </p>
 
-Modern `watch` command.
+An interactive `watch` command.
 
-Viddy well, gopher. Viddy well.
+_Viddy well, gopher. Viddy well._
 
-## Demo
+## Fork notice
 
-<p align="center">
-<img src="images/demo.gif" width="100%" alt="viddy" title="viddy" />
-</p>
-
+This is a fork of the last Go commit of [sachaos/viddy](https://github.com/sachaos/viddy) before it was ported to Rust.
+You should use the Rust version of Viddy by default.
+The Rust version is more stable and better maintained.
+Use viddy-go when you want to take advantage of the Go toolchain for cross-compilation or want a specific feature like `--pty`.
 
 ## Features
 
-* Basic features of original watch command.
-    * Execute command periodically, and display the result.
-    * color output.
-    * diff highlight.
-* Time machine mode. 😎
-    * Rewind like video.
-    * Go to the past, and back to the future.
-* See output in pager.
-* Vim like keymaps.
-* Search text.
+* Basic features of the original watch command:
+    * Execute a command periodically and display its result.
+    * Colorized output.
+    * Diff highlighting.
+* Time machine mode:
+    * Rewind like a video.
+    * Go to the past and back to the future.
+* View output in a pager.
+* Vim-like keymaps.
+* Search for text.
 * Suspend and restart execution.
-* Run command in precise intervals forcibly.
-* Support shell alias
-    * See detail https://github.com/sachaos/viddy/issues/2#issuecomment-904002053
-* Customize keymappings.
-* Customize color.
+* Force commands to run at precise intervals.
+* Shell alias support.
+* Customizable key mappings.
+* Customizable colors.
+
+## Requirements
+
+- Go 1.24 or later
 
 ## Install
-
-### Mac
-
-#### [Homebrew](https://brew.sh)
-
-```shell
-brew install viddy
-```
-
-#### [MacPorts](https://www.macports.org)
-
-```shell
-sudo port install viddy
-```
-
-### Windows
-
-#### [Scoop](https://scoop.sh/)
-
-To install Viddy on Windows, first install the Scoop package manager, and then run the commands below.
-
-**NOTE**: The git package is required in order to add additional Scoop "buckets".
-
-```
-scoop install git
-scoop bucket add extras
-scoop install extras/viddy
-```
-
-### Linux
-
-```shell
-wget -O viddy.tar.gz https://github.com/sachaos/viddy/releases/download/v0.4.0/viddy_Linux_x86_64.tar.gz && tar xvf viddy.tar.gz && mv viddy /usr/local/bin
-```
-
-#### ArchLinux ( AUR )
-
-```shell
-yay -S viddy
-```
-Alternatively you can use the [AUR Git repo](https://aur.archlinux.org/packages/viddy/) directly
-
-#### Alpine Linux
-
-After [enabling the community repository](https://wiki.alpinelinux.org/wiki/Enable_Community_Repository):
-
-```shell
-apk add viddy
-```
-
-### [asdf version manager](https://asdf-vm.com)
-
-```shell
-asdf plugin add viddy
-asdf install viddy latest
-asdf global viddy latest
-```
 
 ### Go
 
 ```shell
-go install github.com/sachaos/viddy@latest
+go install dbohdan.com/viddy-go@latest
 ```
 
 ### Other
 
-Download from [release page](https://github.com/sachaos/viddy/releases).
+Download binaries from the [release page](https://github.com/dbohdan/viddy-go/releases).
 
-## Keymaps
+## Keymap
 
-| key       |                                            |
-|-----------|--------------------------------------------|
-| SPACE     | Toggle time machine mode                   |
-| s         | Toggle <ins>s</ins>uspend execution                   |
-| b         | Toggle ring terminal <ins>b</ins>ell                  |
-| d         | Toggle <ins>d</ins>iff                                |
-| t         | Toggle header/<ins>t</ins>itle display                      |
-| ?         | Toggle help view                           |
-| /         | Search text                                |
-| j         | Pager: next line                           |
-| k         | Pager: previous line                       |
-| Control-F | Pager: page down                           |
-| Control-B | Pager: page up                             |
-| g         | Pager: go to top of page                   |
-| Shift-G   | Pager: go to bottom of page                |
-| Shift-J   | (Time machine mode) Go to the past         |
-| Shift-K   | (Time machine mode) Back to the future     |
-| Shift-F   | (Time machine mode) Go to more past        |
-| Shift-B   | (Time machine mode) Back to more future    |
-| Shift-O   | (Time machine mode) Go to oldest position  |
-| Shift-N   | (Time machine mode) Go to current position |
+| Key       |                                                |
+|-----------|------------------------------------------------|
+| Space     | Toggle time machine mode                       |
+| b         | Toggle terminal <ins>b</ins>ell ringing        |
+| d         | Toggle <ins>d</ins>iff                         |
+| f         | Toggle <ins>f</ins>old                         |
+| s         | Toggle <ins>s</ins>uspend execution            |
+| t         | Toggle header/<ins>t</ins>itle display         |
+| ?         | Toggle help view                               |
+| /         | Search text                                    |
+| j         | Pager: Move to next line                       |
+| k         | Pager: Move to previous line                   |
+| Control-F | Pager: Page down                               |
+| Control-B | Pager: Page up                                 |
+| g         | Pager: Go to top                               |
+| Shift-G   | Pager: Go to bottom                            |
+| Shift-J   | (Time machine mode) Go to the past             |
+| Shift-K   | (Time machine mode) Back to the future         |
+| Shift-F   | (Time machine mode) Go further into the past   |
+| Shift-B   | (Time machine mode) Go further into the future |
+| Shift-O   | (Time machine mode) Go to oldest position      |
+| Shift-N   | (Time machine mode) Go to current position     |
 
 ## Configuration
 
-Install your config file on `$XDG_CONFIG_HOME/viddy.toml`
-On macOS, the path is `~/Library/Application\ Support/viddy.toml`.
+Create your config file at `$XDG_CONFIG_HOME/viddy-go/config.toml`.
+On macOS, the path is `~/Library/Application Support/viddy-go/config.toml`.
 
 ```toml
 [general]
@@ -148,16 +95,16 @@ timemachine_go_to_now = "Ctrl-Shift-Up"
 timemachine_go_to_oldest = "Ctrl-Shift-Down"
 
 [color]
-background = "white" # Default value is inherit from terminal color.
+background = "white"  # Default value uses terminal color.
 ```
 
-## What is "viddy" ?
+## What is "viddy"?
 
-"viddy" is Nadsat word meaning to see.
-Nadsat is fictional argot of gangs in the violent book and movie "A Clockwork Orange".
+"Viddy" is a nadsat word meaning "to see".
+Nadsat is the fictional argot of teenage gangs in the dystopian book and movie [_A Clockwork Orange_](https://en.wikipedia.org/wiki/A_Clockwork_Orange_(novel)).
 
 ## Credits
 
-The gopher's logo of viddy is licensed under the Creative Commons 3.0 Attributions license.
+The gopher logo for Viddy is licensed under the Creative Commons 3.0 Attribution license.
 
-The original Go gopher was designed by [Renee French](https://reneefrench.blogspot.com/).
+The original Go gopher was designed by [Renée French](https://en.wikipedia.org/wiki/Ren%C3%A9e_French).
