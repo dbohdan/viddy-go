@@ -9,6 +9,7 @@ import (
 	"github.com/rivo/tview"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //nolint:funlen
@@ -205,11 +206,10 @@ text = "white"
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			v := viper.New()
 			v.SetConfigType("toml")
-			assert.NoError(t, v.ReadConfig(bytes.NewBufferString(tt.configFile)))
+			require.NoError(t, v.ReadConfig(bytes.NewBufferString(tt.configFile)))
 
 			got, err := newConfig(v, tt.args)
 			assert.Equal(t, tt.expErr, err)
@@ -266,10 +266,9 @@ func TestParseKeyStroke(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.key, func(t *testing.T) {
 			got, err := ParseKeyStroke(tt.key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}

@@ -152,7 +152,7 @@ func (s *Snapshot) render(w io.Writer, isShowDiff bool, query string) error {
 	}
 
 	if query != "" {
-		src = strings.ReplaceAll(src, query, color.New(color.BgYellow, color.FgBlack).Sprintf(query))
+		src = strings.ReplaceAll(src, query, color.New(color.BgYellow, color.FgBlack).Sprint(query))
 	}
 
 	src = tview.Escape(src)
@@ -174,7 +174,7 @@ func DiffPrettyText(diffs []diffmatchpatch.Diff) string {
 				if unicode.IsSpace(c) {
 					_, _ = buff.WriteRune(c)
 				} else {
-					_, _ = buff.WriteString(color.New(color.FgBlack).Sprintf(color.New(color.BgGreen).Sprintf(string(c))))
+					_, _ = buff.WriteString(color.New(color.FgBlack).Sprint(color.New(color.BgGreen).Sprint(string(c))))
 				}
 			}
 		case diffmatchpatch.DiffEqual:

@@ -138,31 +138,26 @@ func NewViddy(conf *config) *Viddy {
 	}
 
 	return &Viddy{
-		keymap: conf.keymap,
-
-		begin:       begin,
-		cmd:         conf.runtime.cmd,
-		args:        conf.runtime.args,
-		duration:    conf.runtime.interval,
-		snapshots:   sync.Map{},
-		historyRows: map[int64]*HistoryRow{},
-
-		historyRowCount: map[int64]int{},
-
+		keymap:           conf.keymap,
+		begin:            begin,
+		cmd:              conf.runtime.cmd,
+		args:             conf.runtime.args,
+		duration:         conf.runtime.interval,
+		snapshots:        sync.Map{},
+		historyRows:      map[int64]*HistoryRow{},
+		historyRowCount:  map[int64]int{},
 		snapshotQueue:    snapshotQueue,
 		isSuspendedQueue: isSuspendedQueue,
 		queue:            make(chan int64),
 		finishedQueue:    make(chan int64),
 		diffQueue:        make(chan int64, 100),
-
-		isRingBell:     conf.general.bell,
-		isShowDiff:     conf.general.differences,
-		skipEmptyDiffs: conf.general.skipEmptyDiffs,
-		isNoTitle:      conf.general.noTitle,
-		isDebug:        conf.general.debug,
-		unfold:         conf.general.unfold,
-		pty:            conf.general.pty,
-
+		isRingBell:       conf.general.bell,
+		isShowDiff:       conf.general.differences,
+		skipEmptyDiffs:   conf.general.skipEmptyDiffs,
+		isNoTitle:        conf.general.noTitle,
+		isDebug:          conf.general.debug,
+		unfold:           conf.general.unfold,
+		pty:              conf.general.pty,
 		currentID:        -1,
 		latestFinishedID: -1,
 	}
@@ -277,7 +272,6 @@ func (v *Viddy) diffQueueHandler() {
 	}
 }
 
-//nolint:funlen
 func (v *Viddy) queueHandler() {
 	for {
 		func() {
@@ -492,6 +486,7 @@ func (v *Viddy) Run() error {
 	h.ScrollToBeginning()
 	h.SetSelectionChangedFunc(func(row, column int) {
 		c := v.historyView.GetCell(row, column)
+
 		id, err := strconv.ParseInt(c.Text, 10, 64)
 		if err == nil {
 			_ = v.renderSnapshot(id)
@@ -534,7 +529,7 @@ func (v *Viddy) Run() error {
 		v.query = text
 		_ = v.renderSnapshot(v.currentID)
 	})
-	q.SetDoneFunc(func(key tcell.Key) {
+	q.SetDoneFunc(func(_ tcell.Key) {
 		v.isEditQuery = false
 		v.arrange()
 	})
@@ -557,58 +552,72 @@ func (v *Viddy) Run() error {
 			ModMask: event.Modifiers(),
 		}
 
-		var any bool
+		var keyMatched bool
+
 		if _, ok := v.keymap.toggleTimeMachine[keystroke]; ok {
 			v.SetIsTimeMachine(!v.isTimeMachine)
-			any = true
+
+			keyMatched = true
 		}
 
 		if _, ok := v.keymap.goToPastOnTimeMachine[keystroke]; ok {
 			if !v.isTimeMachine {
 				return event
 			}
+
 			v.goToPastOnTimeMachine()
-			any = true
+
+			keyMatched = true
 		}
 
 		if _, ok := v.keymap.goToFutureOnTimeMachine[keystroke]; ok {
 			if !v.isTimeMachine {
 				return event
 			}
+
 			v.goToFutureOnTimeMachine()
-			any = true
+
+			keyMatched = true
 		}
 
 		if _, ok := v.keymap.goToMorePastOnTimeMachine[keystroke]; ok {
 			if !v.isTimeMachine {
 				return event
 			}
+
 			v.goToMorePastOnTimeMachine()
-			any = true
+
+			keyMatched = true
 		}
 
 		if _, ok := v.keymap.goToMoreFutureOnTimeMachine[keystroke]; ok {
 			if !v.isTimeMachine {
 				return event
 			}
+
 			v.goToMoreFutureOnTimeMachine()
-			any = true
+
+			keyMatched = true
 		}
 
 		if _, ok := v.keymap.goToNowOnTimeMachine[keystroke]; ok {
 			if !v.isTimeMachine {
 				return event
 			}
+
 			v.goToNowOnTimeMachine()
-			any = true
+
+			keyMatched = true
 		}
 
 		if _, ok := v.keymap.goToOldestOnTimeMachine[keystroke]; ok {
 			if !v.isTimeMachine {
 				return event
 			}
+
 			v.goToOldestOnTimeMachine()
-			any = true
+
+			keyMatched = true
 		}
 
 		if event.Key() == tcell.KeyEsc {
@@ -656,10 +665,11 @@ func (v *Viddy) Run() error {
 				v.query = ""
 				v.queryEditor.SetText("")
 			}
+
 			v.isEditQuery = true
 			v.arrange()
 		default:
-			if !any {
+			if !keyMatched {
 				v.bodyView.InputHandler()(event, nil)
 			}
 		}
@@ -669,7 +679,7 @@ func (v *Viddy) Run() error {
 		return event
 	})
 
-	app.SetAfterDrawFunc(func(screen tcell.Screen) {
+	app.SetAfterDrawFunc(func(_ tcell.Screen) {
 		v.setBodyWidth()
 	})
 
@@ -694,11 +704,9 @@ func (v *Viddy) goToRow(row int) {
 		row = count - 1
 	}
 
-	var (
-		cell    = v.historyView.GetCell(row, 0)
-		id, err = strconv.ParseInt(cell.Text, 10, 64)
-	)
+	cell := v.historyView.GetCell(row, 0)
 
+	id, err := strconv.ParseInt(cell.Text, 10, 64)
 	if err == nil { // if _no_ error
 		v.setSelection(id, row)
 	}
@@ -791,7 +799,7 @@ func formatKeyStroke(stroke KeyStroke) string {
 	}
 
 	if stroke.Key == tcell.KeyRune {
-		b.WriteString(string(stroke.Rune))
+		b.WriteRune(stroke.Rune)
 	} else {
 		b.WriteString(tcell.KeyNames[stroke.Key])
 	}

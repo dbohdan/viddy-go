@@ -70,9 +70,9 @@ func PreciseSnapshot(newSnap newSnapFunc, interval time.Duration) (<-chan *Snaps
 
 			if pTime > interval {
 				continue
-			} else {
-				time.Sleep(interval - pTime)
 			}
+
+			time.Sleep(interval - pTime)
 		}
 	}()
 

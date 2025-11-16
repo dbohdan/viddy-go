@@ -25,6 +25,10 @@ func (s *Snapshot) run(finishedQueue chan<- int64, width int, isPty bool) error 
 	command.Stderr = &eb
 
 	if isPty {
+		// G115: width is int, but pty.Winsize.Cols is uint16.
+		// In this case, width is from terminal size, which is uint16.
+		// So, this conversion is safe.
+		//nolint:gosec
 		pty, err := pty.StartWithSize(command, &pty.Winsize{
 			Cols: uint16(width),
 		})
