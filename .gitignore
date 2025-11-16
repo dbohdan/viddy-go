@@ -1,3 +1,7 @@
-coverage.out
-viddy
+/attic/
+/dist/
 
+*.bak
+*.sw*
+coverage.out
+viddy-go
