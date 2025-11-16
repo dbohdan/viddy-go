@@ -4,28 +4,20 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    - testpackage
-    - forbidigo
-    - paralleltest
-    - exhaustivestruct
-    - wrapcheck
-    - gomnd
-    - gochecknoglobals
-    - maligned
+    - depguard
     - exhaustive
-    - gomoddirectives
     - exhaustruct
+    - forbidigo
     - forcetypeassert
-    - predeclared
+    - gochecknoglobals
+    - gomoddirectives
+    - mnd
     - nilnil
-    - varnamelen
-    - nosnakecase
-    - varcheck
-    - interfacer
-    - structcheck
-    - golint
-    - scopelint
-    - deadcode
-    - ifshort
+    - paralleltest
+    - predeclared
     - rowserrcheck
+    - tenv
+    - testpackage
+    - varnamelen
     - wastedassign
+    - wrapcheck
