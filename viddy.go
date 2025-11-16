@@ -30,6 +30,7 @@ type Viddy struct {
 	begin int64
 
 	keymap keymapping
+	theme  theme
 
 	cmd  string
 	args []string
@@ -83,12 +84,6 @@ type Viddy struct {
 
 type ViddyIntervalMode string
 
-const (
-	borderColor     tcell.Color = tcell.Color59
-	titleColor      tcell.Color = tcell.Color59
-	brightTextColor tcell.Color = tcell.ColorWhite
-)
-
 var (
 	// ViddyIntervalModeClockwork is mode to run command in precise intervals forcibly.
 	ViddyIntervalModeClockwork ViddyIntervalMode = "clockwork"
@@ -105,10 +100,6 @@ var (
 
 func NewViddy(conf *config) *Viddy {
 	begin := time.Now().UnixNano()
-
-	tview.Styles.BorderColor = borderColor
-	tview.Styles.SecondaryTextColor = titleColor
-	tview.Styles.TitleColor = titleColor
 
 	newSnap := func(id int64, before *Snapshot, finish chan<- struct{}) *Snapshot {
 		return NewSnapshot(
@@ -139,6 +130,7 @@ func NewViddy(conf *config) *Viddy {
 
 	return &Viddy{
 		keymap:           conf.keymap,
+		theme:            conf.theme,
 		begin:            begin,
 		cmd:              conf.runtime.cmd,
 		args:             conf.runtime.args,
@@ -394,18 +386,18 @@ func (v *Viddy) renderSnapshot(id int64) error {
 
 func (v *Viddy) UpdateStatusView() {
 	v.statusView.SetText(fmt.Sprintf("%s %s %s %s",
-		convertToOnOrOff(!v.unfold, "[F]old"),
-		convertToOnOrOff(v.isShowDiff, "[D]iff"),
-		convertToOnOrOff(v.isSuspend, "[S]uspend"),
-		convertToOnOrOff(v.isRingBell, "[B]ell"),
+		v.convertToOnOrOff(!v.unfold, "[F]old"),
+		v.convertToOnOrOff(v.isShowDiff, "[D]iff"),
+		v.convertToOnOrOff(v.isSuspend, "[S]uspend"),
+		v.convertToOnOrOff(v.isRingBell, "[B]ell"),
 	))
 }
 
-func convertToOnOrOff(on bool, label string) string {
+func (v *Viddy) convertToOnOrOff(on bool, label string) string {
 	label = tview.Escape(label)
 
 	if on {
-		return fmt.Sprintf("[%s::b]%s[reset]", brightTextColor.CSS(), label)
+		return fmt.Sprintf("[%s:b]%s[reset]", v.theme.StatusActiveColor.CSS(), label)
 	}
 
 	return fmt.Sprintf("[%s]%s[reset]", tview.Styles.SecondaryTextColor.CSS(), label)

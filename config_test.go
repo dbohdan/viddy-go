@@ -14,6 +14,8 @@ import (
 
 //nolint:funlen
 func Test_newConfig(t *testing.T) {
+	boxColorCSS := tcell.GetColor(boxColor.CSS())
+
 	defaultConfig := config{
 		runtime: runtimeConfig{
 			cmd:      "",
@@ -36,15 +38,16 @@ func Test_newConfig(t *testing.T) {
 				PrimitiveBackgroundColor:    0,
 				ContrastBackgroundColor:     0,
 				MoreContrastBackgroundColor: 0,
-				BorderColor:                 tcell.ColorGray,
-				TitleColor:                  tcell.ColorGray,
+				BorderColor:                 boxColorCSS,
+				TitleColor:                  boxColorCSS,
 				GraphicsColor:               0,
 				PrimaryTextColor:            0,
-				SecondaryTextColor:          0,
+				SecondaryTextColor:          boxColorCSS,
 				TertiaryTextColor:           0,
 				InverseTextColor:            0,
 				ContrastSecondaryTextColor:  0,
 			},
+			StatusActiveColor: 12901679103,
 		},
 		keymap: keymapping{
 			toggleTimeMachine:           map[KeyStroke]struct{}{mustParseKeymap(" "): {}},
@@ -199,6 +202,10 @@ text = "white"
 
 				c.theme.PrimitiveBackgroundColor = tcell.ColorBlack
 				c.theme.PrimaryTextColor = tcell.ColorWhite
+				c.theme.BorderColor = 12891152223
+				c.theme.TitleColor = 12891152223
+				c.theme.SecondaryTextColor = 12891152223
+				c.theme.StatusActiveColor = 12901679103
 
 				return c
 			}(),

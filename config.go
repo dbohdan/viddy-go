@@ -16,6 +16,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	boxColor          tcell.Color = tcell.Color59
+	statusActiveColor tcell.Color = tcell.ColorWhite
+)
+
 var (
 	errNoCommand        = errors.New("command is required")
 	errIntervalTooSmall = errors.New("interval too small")
@@ -52,6 +57,8 @@ type general struct {
 
 type theme struct {
 	tview.Theme
+
+	StatusActiveColor tcell.Color
 }
 
 type KeyStroke struct {
@@ -183,8 +190,11 @@ func newConfig(v *viper.Viper, args []string) (*config, error) {
 	conf.general.unfold = v.GetBool("general.unfold")
 	conf.general.pty = v.GetBool("general.pty")
 
-	v.SetDefault("color.border", "gray")
-	v.SetDefault("color.title", "gray")
+	v.SetDefault("color.border", boxColor.CSS())
+	v.SetDefault("color.title", boxColor.CSS())
+	v.SetDefault("color.secondary_text", boxColor.CSS())
+
+	v.SetDefault("color.status_active", statusActiveColor.CSS())
 
 	conf.theme.Theme = tview.Theme{
 		PrimitiveBackgroundColor:    tcell.GetColor(v.GetString("color.background")),
@@ -199,6 +209,7 @@ func newConfig(v *viper.Viper, args []string) (*config, error) {
 		InverseTextColor:            tcell.GetColor(v.GetString("color.inverse_text")),
 		ContrastSecondaryTextColor:  tcell.GetColor(v.GetString("color.contrast_secondary_text")),
 	}
+	conf.theme.StatusActiveColor = tcell.GetColor(v.GetString("color.status_active"))
 
 	conf.keymap.toggleTimeMachine = getKeymapDefault(v, "keymap.toggle_timemachine",
 		map[KeyStroke]struct{}{mustParseKeymap(" "): {}})
