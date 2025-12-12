@@ -355,8 +355,12 @@ func (v *Viddy) setSelection(id int64, row int) {
 
 	v.historyView.Select(row, 0)
 	v.currentID = id
+
 	unix := v.begin + id*int64(time.Millisecond)
-	v.timeView.SetText(time.Unix(unix/int64(time.Second), unix%int64(time.Second)).String())
+	t := time.Unix(unix/int64(time.Second), unix%int64(time.Second))
+	text := t.Format("2006-01-02 15:04:05")
+
+	v.timeView.SetText(text)
 }
 
 func (v *Viddy) getSnapShot(id int64) *Snapshot {
