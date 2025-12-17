@@ -56,8 +56,7 @@ func main() {
 }
 
 func help() {
-	fmt.Println(`
-Viddy well, gopher. Viddy well.
+	fmt.Println(`Viddy well, gopher. Viddy well.
 
 Usage:
  viddy [options] command
@@ -76,5 +75,5 @@ Options:
   --pty                      run on pty (experimental, not for Windows)
 
  -h, --help     display this help and exit
- -v, --version  output version information and exit`)
+ -V, --version  output version information and exit`)
 }
