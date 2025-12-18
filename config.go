@@ -17,6 +17,10 @@ import (
 )
 
 const (
+	defaultQueueSize     = 1_000
+	defaultSnapshotLimit = 100_000
+	defaultWidth         = 80
+
 	boxColor          tcell.Color = tcell.Color59
 	statusActiveColor tcell.Color = tcell.ColorWhite
 )

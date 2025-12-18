@@ -1,60 +1,84 @@
 package main
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type newSnapFunc func(int64, *Snapshot, chan<- struct{}) *Snapshot
 
-func ClockSnapshot(begin int64, newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
+func ClockSnapshot(ctx context.Context, begin int64, newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
 	c := make(chan *Snapshot)
-	isSuspended := false
 	isSuspendedQueue := make(chan bool)
 
 	go func() {
+		defer close(c)
 		var s *Snapshot
+		var isSuspended bool
 
-		t := time.Tick(interval)
+		t := time.NewTicker(interval)
+		defer t.Stop()
 
-		for now := range t {
+		for {
 			select {
-			case isSuspended = <-isSuspendedQueue:
-			default:
+			case <-ctx.Done():
+				return
+
+			case suspend := <-isSuspendedQueue:
+				isSuspended = suspend
+
+			case now := <-t.C:
+				if isSuspended {
+					continue
+				}
+
+				finish := make(chan struct{})
+				id := (now.UnixNano() - begin) / int64(time.Millisecond)
+
+				s = newSnap(id, s, finish)
+				select {
+				case c <- s:
+
+				case <-ctx.Done():
+					return
+				}
 			}
-
-			if isSuspended {
-				continue
-			}
-
-			finish := make(chan struct{})
-			id := (now.UnixNano() - begin) / int64(time.Millisecond)
-
-			s = newSnap(id, s, finish)
-			c <- s
 		}
 	}()
 
 	return c, isSuspendedQueue
 }
 
-func PreciseSnapshot(newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
+func PreciseSnapshot(ctx context.Context, newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
 	c := make(chan *Snapshot)
-	isSuspended := false
 	isSuspendedQueue := make(chan bool)
 
 	go func() {
+		defer close(c)
 		var s *Snapshot
+		var isSuspended bool
 
 		begin := time.Now().UnixNano()
 
 		for {
 			select {
-			case isSuspended = <-isSuspendedQueue:
+			case <-ctx.Done():
+				return
+
+			case suspend := <-isSuspendedQueue:
+				isSuspended = suspend
+
 			default:
 			}
 
 			if isSuspended {
-				time.Sleep(interval)
+				select {
+				case <-ctx.Done():
+					return
 
-				continue
+				case <-time.After(interval):
+					continue
+				}
 			}
 
 			finish := make(chan struct{})
@@ -63,9 +87,19 @@ func PreciseSnapshot(newSnap newSnapFunc, interval time.Duration) (<-chan *Snaps
 			ns := newSnap(id, s, finish)
 			s = ns
 
-			c <- ns
+			select {
+			case c <- ns:
 
-			<-finish
+			case <-ctx.Done():
+				return
+			}
+
+			select {
+			case <-finish:
+
+			case <-ctx.Done():
+				return
+			}
 
 			pTime := time.Since(start)
 
@@ -73,44 +107,75 @@ func PreciseSnapshot(newSnap newSnapFunc, interval time.Duration) (<-chan *Snaps
 				continue
 			}
 
-			time.Sleep(interval - pTime)
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-time.After(interval - pTime):
+			}
 		}
 	}()
 
 	return c, isSuspendedQueue
 }
 
-func SequentialSnapshot(newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
+func SequentialSnapshot(ctx context.Context, newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
 	c := make(chan *Snapshot)
-	isSuspended := false
 	isSuspendedQueue := make(chan bool)
 
 	go func() {
+		defer close(c)
 		var s *Snapshot
+		var isSuspended bool
 
 		begin := time.Now().UnixNano()
 
 		for {
 			select {
-			case isSuspended = <-isSuspendedQueue:
+			case <-ctx.Done():
+				return
+
+			case suspend := <-isSuspendedQueue:
+				isSuspended = suspend
+
 			default:
 			}
 
 			if isSuspended {
-				time.Sleep(interval)
+				select {
+				case <-ctx.Done():
+					return
 
-				continue
+				case <-time.After(interval):
+					continue
+				}
 			}
 
 			finish := make(chan struct{})
 			id := (time.Now().UnixNano() - begin) / int64(time.Millisecond)
 
 			s = newSnap(id, s, finish)
-			c <- s
 
-			<-finish
+			select {
+			case c <- s:
 
-			time.Sleep(interval)
+			case <-ctx.Done():
+				return
+			}
+
+			select {
+			case <-finish:
+
+			case <-ctx.Done():
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+
+			case <-time.After(interval):
+			}
 		}
 	}()
 

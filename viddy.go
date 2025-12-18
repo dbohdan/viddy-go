@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
@@ -38,17 +39,25 @@ type Viddy struct {
 	duration  time.Duration
 	snapshots sync.Map
 
+	// The maximum number of snapshots to keep in memory.
+	snapshotLimit int
+	snapshotIDs   []int64
+	snapshotMu    sync.Mutex
+
 	intervalView *tview.TextView
 	commandView  *tview.TextView
 	timeView     *tview.TextView
 	historyView  *tview.Table
-	historyRows  map[int64]*HistoryRow
 
-	// bWidth store current pty width.
+	historyRows   map[int64]*HistoryRow
+	historyRowsMu sync.RWMutex
+
+	// bWidth stores current pty width.
 	bWidth atomic.Value
 
 	// id -> row count (as of just after the snapshot was added).
-	historyRowCount map[int64]int
+	historyRowCount   map[int64]int
+	historyRowCountMu sync.RWMutex
 
 	bodyView    *tview.TextView
 	app         *tview.Application
@@ -66,7 +75,7 @@ type Viddy struct {
 	currentID        int64
 	latestFinishedID int64
 	isTimeMachine    bool
-	isSuspend        bool
+	isSuspend        atomic.Bool
 	isNoTitle        bool
 	isRingBell       bool
 	isShowDiff       bool
@@ -80,6 +89,9 @@ type Viddy struct {
 	isDebug      bool
 	showLogView  bool
 	showHelpView bool
+
+	stopCh chan struct{}
+	wg     sync.WaitGroup
 }
 
 type ViddyIntervalMode string
@@ -101,6 +113,8 @@ var (
 func NewViddy(conf *config) *Viddy {
 	begin := time.Now().UnixNano()
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	newSnap := func(id int64, before *Snapshot, finish chan<- struct{}) *Snapshot {
 		return NewSnapshot(
 			id,
@@ -121,14 +135,14 @@ func NewViddy(conf *config) *Viddy {
 
 	switch conf.runtime.mode {
 	case ViddyIntervalModeClockwork:
-		snapshotQueue, isSuspendedQueue = ClockSnapshot(begin, newSnap, conf.runtime.interval)
+		snapshotQueue, isSuspendedQueue = ClockSnapshot(ctx, begin, newSnap, conf.runtime.interval)
 	case ViddyIntervalModeSequential:
-		snapshotQueue, isSuspendedQueue = SequentialSnapshot(newSnap, conf.runtime.interval)
+		snapshotQueue, isSuspendedQueue = SequentialSnapshot(ctx, newSnap, conf.runtime.interval)
 	case ViddyIntervalModePrecise:
-		snapshotQueue, isSuspendedQueue = PreciseSnapshot(newSnap, conf.runtime.interval)
+		snapshotQueue, isSuspendedQueue = PreciseSnapshot(ctx, newSnap, conf.runtime.interval)
 	}
 
-	return &Viddy{
+	v := &Viddy{
 		keymap:           conf.keymap,
 		theme:            conf.theme,
 		begin:            begin,
@@ -136,13 +150,15 @@ func NewViddy(conf *config) *Viddy {
 		args:             conf.runtime.args,
 		duration:         conf.runtime.interval,
 		snapshots:        sync.Map{},
+		snapshotLimit:    defaultSnapshotLimit,
+		snapshotIDs:      make([]int64, 0, defaultSnapshotLimit),
 		historyRows:      map[int64]*HistoryRow{},
 		historyRowCount:  map[int64]int{},
 		snapshotQueue:    snapshotQueue,
 		isSuspendedQueue: isSuspendedQueue,
-		queue:            make(chan int64),
-		finishedQueue:    make(chan int64),
-		diffQueue:        make(chan int64, 100),
+		queue:            make(chan int64, defaultQueueSize),
+		finishedQueue:    make(chan int64, defaultQueueSize),
+		diffQueue:        make(chan int64, defaultQueueSize),
 		isRingBell:       conf.general.bell,
 		isShowDiff:       conf.general.differences,
 		skipEmptyDiffs:   conf.general.skipEmptyDiffs,
@@ -152,7 +168,16 @@ func NewViddy(conf *config) *Viddy {
 		pty:              conf.general.pty,
 		currentID:        -1,
 		latestFinishedID: -1,
+		stopCh:           make(chan struct{}),
 	}
+
+	// Cancel the context when stopCh is closed.
+	go func() {
+		<-v.stopCh
+		cancel()
+	}()
+
+	return v
 }
 
 func (v *Viddy) ShowLogView(b bool) {
@@ -187,16 +212,55 @@ func (v *Viddy) println(a ...any) {
 }
 
 func (v *Viddy) addSnapshot(s *Snapshot) {
+	v.snapshotMu.Lock()
+	defer v.snapshotMu.Unlock()
+
 	v.snapshots.Store(s.id, s)
+	v.snapshotIDs = append(v.snapshotIDs, s.id)
+
+	// Remove old snapshots that exceed the limit.
+	for len(v.snapshotIDs) > v.snapshotLimit {
+		oldID := v.snapshotIDs[0]
+		v.snapshotIDs = v.snapshotIDs[1:]
+
+		v.snapshots.Delete(oldID)
+
+		v.historyRowsMu.Lock()
+		delete(v.historyRows, oldID)
+		v.historyRowsMu.Unlock()
+
+		v.historyRowCountMu.Lock()
+		delete(v.historyRowCount, oldID)
+		v.historyRowCountMu.Unlock()
+	}
 }
 
 func (v *Viddy) startRunner() {
-	for s := range v.snapshotQueue {
-		v.addSnapshot(s)
+	v.wg.Add(1)
+	defer v.wg.Done()
 
-		v.queue <- s.id
+	for {
+		select {
+		case <-v.stopCh:
+			return
 
-		_ = s.run(v.finishedQueue, v.getBodyWidth(), v.pty)
+		case s, ok := <-v.snapshotQueue:
+			if !ok {
+				return
+			}
+			v.addSnapshot(s)
+
+			select {
+			case v.queue <- s.id:
+
+			case <-v.stopCh:
+				return
+			}
+
+			if err := s.run(v.finishedQueue, v.getBodyWidth(), v.pty); err != nil {
+				v.println(fmt.Sprintf("Error running snapshot %d: %v", s.id, err))
+			}
+		}
 	}
 }
 
@@ -215,65 +279,108 @@ func (v *Viddy) addSnapshotToView(id int64, r *HistoryRow) {
 	v.historyView.SetCell(0, 2, r.deletion)
 	v.historyView.SetCell(0, 3, r.exitCode)
 
+	v.historyRowCountMu.Lock()
 	v.historyRowCount[id] = v.historyView.GetRowCount()
+	v.historyRowCountMu.Unlock()
 
 	v.updateSelection()
 }
 
 func (v *Viddy) diffQueueHandler() {
+	v.wg.Add(1)
+	defer v.wg.Done()
+
 	for {
-		func() {
-			defer v.app.Draw()
+		select {
+		case <-v.stopCh:
+			return
 
-			id := <-v.diffQueue
-			s := v.getSnapShot(id)
-
-			if s == nil {
-				return
-			}
-
-			err := s.compareFromBefore()
-			if err != nil {
-				time.Sleep(1 * time.Second)
-
-				v.diffQueue <- id
-
-				return
-			}
-
-			if s.diffAdditionCount > 0 || s.diffDeletionCount > 0 {
-				if v.isRingBell {
-					fmt.Print(string(byte(7)))
-				}
-			} else if v.skipEmptyDiffs {
-				return
-			}
-
-			r, ok := v.historyRows[id]
+		case id, ok := <-v.diffQueue:
 			if !ok {
 				return
 			}
 
-			// if skipEmptyDiffs is true, queueHandler wouldn't have added the
-			// snapshot to view, so we need to add it here.
-			if v.skipEmptyDiffs {
-				v.addSnapshotToView(id, r)
-			}
+			func() {
+				defer v.app.Draw()
 
-			r.addition.SetText("+" + strconv.Itoa(s.diffAdditionCount))
-			r.deletion.SetText("-" + strconv.Itoa(s.diffDeletionCount))
-		}()
+				s := v.getSnapShot(id)
+
+				if s == nil {
+					return
+				}
+
+				err := s.compareFromBefore()
+				if err != nil {
+					select {
+					case <-v.stopCh:
+						return
+
+					case <-time.After(1 * time.Second):
+					}
+
+					select {
+					case v.diffQueue <- id:
+
+					case <-v.stopCh:
+						return
+
+					default:
+						// The queue is full; skip retry.
+					}
+
+					return
+				}
+
+				if s.diffAdditionCount > 0 || s.diffDeletionCount > 0 {
+					if v.isRingBell {
+						fmt.Print(string(byte(7)))
+					}
+				} else if v.skipEmptyDiffs {
+					return
+				}
+
+				v.historyRowsMu.RLock()
+				r, ok := v.historyRows[id]
+				v.historyRowsMu.RUnlock()
+
+				if !ok {
+					return
+				}
+
+				// if skipEmptyDiffs is true, queueHandler wouldn't have added the
+				// snapshot to view, so we need to add it here.
+				if v.skipEmptyDiffs {
+					v.addSnapshotToView(id, r)
+				}
+
+				r.addition.SetText("+" + strconv.Itoa(s.diffAdditionCount))
+				r.deletion.SetText("-" + strconv.Itoa(s.diffDeletionCount))
+			}()
+		}
 	}
 }
 
 func (v *Viddy) queueHandler() {
-	for {
-		func() {
-			defer v.app.Draw()
+	v.wg.Add(1)
+	defer v.wg.Done()
 
-			select {
-			case id := <-v.finishedQueue:
+	for {
+		select {
+		case <-v.stopCh:
+			return
+
+		case id, ok := <-v.finishedQueue:
+			if !ok {
+				return
+			}
+
+			func() {
+				defer v.app.Draw()
+
+				v.historyRowsMu.RLock()
 				r, ok := v.historyRows[id]
+				v.historyRowsMu.RUnlock()
+
 				if !ok {
 					return
 				}
@@ -285,7 +392,15 @@ func (v *Viddy) queueHandler() {
 					return
 				}
 
-				v.diffQueue <- s.id
+				select {
+				case v.diffQueue <- s.id:
+
+				case <-v.stopCh:
+					return
+
+				default:
+					// The queue is full; skip this diff.
+				}
 
 				if s.exitCode > 0 {
 					r.exitCode.SetText(fmt.Sprintf("E(%d)", s.exitCode))
@@ -296,8 +411,21 @@ func (v *Viddy) queueHandler() {
 					v.latestFinishedID = id
 					v.updateSelection()
 				}
-			case id := <-v.queue:
+			}()
+
+		case id, ok := <-v.queue:
+			if !ok {
+				return
+			}
+
+			func() {
+				defer v.app.Draw()
+
 				s := v.getSnapShot(id)
+				if s == nil {
+					return
+				}
+
 				idCell := tview.NewTableCell(strconv.FormatInt(s.id, 10)).SetTextColor(tview.Styles.SecondaryTextColor)
 				additionCell := tview.NewTableCell("").SetTextColor(tcell.ColorGreen)
 				deletionCell := tview.NewTableCell("").SetTextColor(tcell.ColorRed)
@@ -309,7 +437,10 @@ func (v *Viddy) queueHandler() {
 					deletion: deletionCell,
 					exitCode: exitCodeCell,
 				}
+
+				v.historyRowsMu.Lock()
 				v.historyRows[s.id] = r
+				v.historyRowsMu.Unlock()
 
 				// if skipEmptyDiffs is true, we need to check if the snapshot
 				// is empty before adding it to the view (in diffQueueHandler).
@@ -329,8 +460,8 @@ func (v *Viddy) queueHandler() {
 				if !v.skipEmptyDiffs {
 					v.addSnapshotToView(id, r)
 				}
-			}
-		}()
+			}()
+		}
 	}
 }
 
@@ -350,7 +481,15 @@ func (v *Viddy) setSelection(id int64, row int) {
 	}
 
 	if row == -1 {
-		row = v.historyView.GetRowCount() - v.historyRowCount[id]
+		v.historyRowCountMu.RLock()
+		rowCount, ok := v.historyRowCount[id]
+		v.historyRowCountMu.RUnlock()
+
+		if ok {
+			row = v.historyView.GetRowCount() - rowCount
+		} else {
+			row = 0
+		}
 	}
 
 	v.historyView.Select(row, 0)
@@ -379,7 +518,6 @@ func (v *Viddy) renderSnapshot(id int64) error {
 	}
 
 	bw := v.bodyView.BatchWriter()
-	defer bw.Close()
 
 	bw.Clear()
 
@@ -387,14 +525,22 @@ func (v *Viddy) renderSnapshot(id int64) error {
 		return errNotCompletedYet
 	}
 
-	return s.render(bw, v.isShowDiff, v.query)
+	if err := s.render(bw, v.isShowDiff, v.query); err != nil {
+		return err
+	}
+
+	if err := bw.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (v *Viddy) UpdateStatusView() {
 	v.statusView.SetText(fmt.Sprintf("%s %s %s %s",
 		v.convertToOnOrOff(!v.unfold, "[F]old"),
 		v.convertToOnOrOff(v.isShowDiff, "[D]iff"),
-		v.convertToOnOrOff(v.isSuspend, "[S]uspend"),
+		v.convertToOnOrOff(v.isSuspend.Load(), "[S]uspend"),
 		v.convertToOnOrOff(v.isRingBell, "[B]ell"),
 	))
 }
@@ -487,7 +633,9 @@ func (v *Viddy) Run() error {
 
 		id, err := strconv.ParseInt(c.Text, 10, 64)
 		if err == nil {
-			_ = v.renderSnapshot(id)
+			if err := v.renderSnapshot(id); err != nil {
+				v.println(fmt.Sprintf("Error rendering snapshot %d: %v", id, err))
+			}
 		}
 	})
 	h.SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorGray))
@@ -526,7 +674,9 @@ func (v *Viddy) Run() error {
 	q := tview.NewInputField().SetLabel("/")
 	q.SetChangedFunc(func(text string) {
 		v.query = text
-		_ = v.renderSnapshot(v.currentID)
+		if err := v.renderSnapshot(v.currentID); err != nil {
+			v.println(fmt.Sprintf("Error rendering snapshot: %v", err))
+		}
 	})
 	q.SetDoneFunc(func(_ tcell.Key) {
 		v.isEditQuery = false
@@ -629,36 +779,42 @@ func (v *Viddy) Run() error {
 				v.showHelpView = false
 				v.arrange()
 			} else { // it's not help view, so just quit
-				v.app.Stop()
-				os.Exit(0)
+				v.Shutdown()
 			}
 		}
 
 		// quit viddy from any view
 		if event.Rune() == 'Q' {
-			v.app.Stop()
-			os.Exit(0)
+			v.Shutdown()
 		}
 
 		switch event.Rune() {
 		case 's':
-			v.isSuspend = !v.isSuspend
-			v.isSuspendedQueue <- v.isSuspend
+			newSuspend := !v.isSuspend.Load()
+			v.isSuspend.Store(newSuspend)
+			v.isSuspendedQueue <- newSuspend
+
 		case 'b':
 			v.isRingBell = !v.isRingBell
+
 		case 'd':
 			v.SetIsShowDiff(!v.isShowDiff)
+
 		case 't':
 			v.SetIsNoTitle(!v.isNoTitle)
+
 		case 'f':
 			b.SetWrap(v.unfold)
 			v.unfold = !v.unfold
+
 		case 'x':
 			if v.isDebug {
 				v.ShowLogView(!v.showLogView)
 			}
+
 		case '?':
 			v.ShowHelpView(!v.showHelpView)
+
 		case '/':
 			if v.query != "" {
 				v.query = ""
@@ -667,6 +823,7 @@ func (v *Viddy) Run() error {
 
 			v.isEditQuery = true
 			v.arrange()
+
 		default:
 			if !keyMatched {
 				v.bodyView.InputHandler()(event, nil)
@@ -693,7 +850,22 @@ func (v *Viddy) Run() error {
 	go v.queueHandler()
 	go v.startRunner()
 
-	return app.Run()
+	//nolint:staticcheck
+	err := app.Run()
+
+	v.Shutdown()
+
+	return err
+}
+
+func (v *Viddy) Shutdown() {
+	// Signal all goroutines to stop.
+	close(v.stopCh)
+
+	v.wg.Wait()
+
+	v.app.Stop()
+	os.Exit(0)
 }
 
 func (v *Viddy) goToRow(row int) {
@@ -807,7 +979,7 @@ func formatKeyStroke(stroke KeyStroke) string {
 }
 
 func (v *Viddy) setBodyWidth() {
-	width := 80
+	width := defaultWidth
 	if winsize, err := term.GetWinsize(os.Stdout.Fd()); err == nil {
 		width = int(winsize.Width)
 	}
@@ -816,7 +988,12 @@ func (v *Viddy) setBodyWidth() {
 }
 
 func (v *Viddy) getBodyWidth() int {
-	return v.bWidth.Load().(int)
+	val, ok := v.bWidth.Load().(int)
+	if !ok {
+		return defaultWidth
+	}
+
+	return val
 }
 
 func (v *Viddy) helpPage() string {

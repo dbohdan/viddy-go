@@ -30,7 +30,7 @@ func (s *Snapshot) run(finishedQueue chan<- int64, width int, isPty bool) error 
 		// In this case, width is from terminal size, which is uint16.
 		// So, this conversion is safe.
 		//nolint:gosec
-		pty, err := pty.StartWithSize(command, &pty.Winsize{
+		ptmx, err := pty.StartWithSize(command, &pty.Winsize{
 			Cols: uint16(width),
 		})
 		if err != nil {
@@ -38,7 +38,7 @@ func (s *Snapshot) run(finishedQueue chan<- int64, width int, isPty bool) error 
 		}
 
 		go func() {
-			_, _ = io.Copy(&b, pty)
+			_, _ = io.Copy(&b, ptmx)
 		}()
 	} else {
 		command.Stdout = &b
