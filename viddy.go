@@ -218,20 +218,30 @@ func (v *Viddy) addSnapshot(s *Snapshot) {
 	v.snapshots.Store(s.id, s)
 	v.snapshotIDs = append(v.snapshotIDs, s.id)
 
-	// Remove old snapshots that exceed the limit.
-	for len(v.snapshotIDs) > v.snapshotLimit {
-		oldID := v.snapshotIDs[0]
-		v.snapshotIDs = v.snapshotIDs[1:]
+	// Remove old snapshots that exceed the limit in batch.
+	if len(v.snapshotIDs) > v.snapshotLimit {
+		excess := len(v.snapshotIDs) - v.snapshotLimit
 
-		v.snapshots.Delete(oldID)
+		idsToRemove := v.snapshotIDs[:excess]
+
+		for _, id := range idsToRemove {
+			v.snapshots.Delete(id)
+		}
 
 		v.historyRowsMu.Lock()
-		delete(v.historyRows, oldID)
+		for _, id := range idsToRemove {
+			delete(v.historyRows, id)
+		}
 		v.historyRowsMu.Unlock()
 
 		v.historyRowCountMu.Lock()
-		delete(v.historyRowCount, oldID)
+		for _, id := range idsToRemove {
+			delete(v.historyRowCount, id)
+		}
 		v.historyRowCountMu.Unlock()
+
+		// Update the slice to keep only the last snapshotLimit elements.
+		v.snapshotIDs = v.snapshotIDs[excess:]
 	}
 }
 
