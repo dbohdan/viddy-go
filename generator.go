@@ -7,7 +7,12 @@ import (
 
 type newSnapFunc func(int64, *Snapshot, chan<- struct{}) *Snapshot
 
-func ClockSnapshot(ctx context.Context, begin int64, newSnap newSnapFunc, interval time.Duration) (<-chan *Snapshot, chan<- bool) {
+func ClockSnapshot(
+	ctx context.Context,
+	begin int64,
+	newSnap newSnapFunc,
+	interval time.Duration,
+) (<-chan *Snapshot, chan<- bool) {
 	c := make(chan *Snapshot)
 	isSuspendedQueue := make(chan bool)
 

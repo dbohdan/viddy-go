@@ -229,15 +229,19 @@ func (v *Viddy) addSnapshot(s *Snapshot) {
 		}
 
 		v.historyRowsMu.Lock()
+
 		for _, id := range idsToRemove {
 			delete(v.historyRows, id)
 		}
+
 		v.historyRowsMu.Unlock()
 
 		v.historyRowCountMu.Lock()
+
 		for _, id := range idsToRemove {
 			delete(v.historyRowCount, id)
 		}
+
 		v.historyRowCountMu.Unlock()
 
 		// Update the slice to keep only the last snapshotLimit elements.
@@ -258,6 +262,7 @@ func (v *Viddy) startRunner() {
 			if !ok {
 				return
 			}
+
 			v.addSnapshot(s)
 
 			select {
@@ -802,6 +807,7 @@ func (v *Viddy) Run() error {
 		case 's':
 			newSuspend := !v.isSuspend.Load()
 			v.isSuspend.Store(newSuspend)
+
 			v.isSuspendedQueue <- newSuspend
 
 		case 'b':
