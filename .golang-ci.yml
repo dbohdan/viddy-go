@@ -1,30 +1,100 @@
 version: "2"
 linters:
-  default: all
-  disable:
-    - depguard
-    - exhaustive
-    - exhaustruct
-    - forbidigo
-    - forcetypeassert
-    - funcorder
-    - gochecknoglobals
-    - gomoddirectives
-    - mnd
-    - nilnil
-    - noctx
-    - noinlineerr
-    - paralleltest
-    - predeclared
-    - rowserrcheck
-    - testpackage
-    - varnamelen
-    - wastedassign
-    - wrapcheck
-    - wsl
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - containedctx
+    - contextcheck
+    - copyloopvar
+    - decorder
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - embeddedstructfieldcheck
+    - err113
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exptostd
+    - fatcontext
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - gochecksumtype
+    - goconst
+    - gocritic
+    - gocyclo
+    - godoclint
+    - godot
+    - godox
+    - goheader
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosmopolitan
+    - govet
+    - grouper
+    - iface
+    - importas
+    - inamedparam
+    - ineffassign
+    - interfacebloat
+    - intrange
+    - iotamixing
+    - ireturn
+    - lll
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
+    - modernize
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnesserr
+    - nlreturn
+    - nolintlint
+    - nonamedreturns
+    - nosprintfhostport
+    - perfsprint
+    - prealloc
+    - promlinter
+    - protogetter
+    - reassign
+    - recvcheck
+    - revive
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - staticcheck
+    - tagalign
+    - tagliatelle
+    - testableexamples
+    - testifylint
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - unqueryvet
+    - unused
+    - usestdlibvars
+    - usetesting
+    - whitespace
+    - wsl_v5
+    - zerologlint
   settings:
     lll:
       line-length: 130
+    wsl_v5:
+      disable:
+        - decl
   exclusions:
     generated: lax
     presets:
