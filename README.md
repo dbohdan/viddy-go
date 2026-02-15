@@ -51,10 +51,13 @@ Download binaries from the [release page](https://github.com/dbohdan/viddy-go/re
 
 ## Keymap
 
+Note: these are the default key bindings.
+They can be customized via the configuration file.
+
 | Key       |                                                |
 |-----------|------------------------------------------------|
 | Space     | Toggle time machine mode                       |
-| b         | Toggle terminal <ins>b</ins>ell ringing        |
+| b         | Toggle terminal <ins>b</ins>ell                |
 | d         | Toggle <ins>d</ins>iff                         |
 | f         | Toggle <ins>f</ins>old                         |
 | s         | Toggle <ins>s</ins>uspend execution            |
@@ -63,8 +66,8 @@ Download binaries from the [release page](https://github.com/dbohdan/viddy-go/re
 | /         | Search text                                    |
 | j         | Pager: Move to next line                       |
 | k         | Pager: Move to previous line                   |
-| Control-F | Pager: Page down                               |
-| Control-B | Pager: Page up                                 |
+| Ctrl-F    | Pager: Page down                               |
+| Ctrl-B    | Pager: Page up                                 |
 | g         | Pager: Go to top                               |
 | Shift-G   | Pager: Go to bottom                            |
 | Shift-J   | (Time machine mode) Go to the past             |
@@ -78,6 +81,7 @@ Download binaries from the [release page](https://github.com/dbohdan/viddy-go/re
 
 Create your config file at `$XDG_CONFIG_HOME/viddy-go/config.toml`.
 On macOS, the path is `~/Library/Application Support/viddy-go/config.toml`.
+On Windows, the path is `%APPDATA%\viddy-go\config.toml`.
 
 ```toml
 [general]
@@ -101,7 +105,7 @@ background = "white"  # Default value uses terminal color.
 ## What is "viddy"?
 
 "Viddy" is a nadsat word meaning "to see".
-Nadsat is the fictional argot of teenage gangs in the dystopian book and movie [_A Clockwork Orange_](https://en.wikipedia.org/wiki/A_Clockwork_Orange_(novel)).
+Nadsat is the fictional argot of teenage gangs in the dystopian novel and movie [_A Clockwork Orange_](https://en.wikipedia.org/wiki/A_Clockwork_Orange_(novel)).
 
 ## Credits
 
